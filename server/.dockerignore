@@ -1,4 +1,72 @@
+# =============================================================================
+# Docker Ignore - Exclude files from Docker build context
+# Reduces build time and image size
+# =============================================================================
+
+# Dependencies (will be installed fresh in container)
 node_modules
 npm-debug.log
+yarn-error.log
+package-lock.json.bak
+
+# Build outputs (will be rebuilt in container)
+dist
+build
+
+# Environment and secrets (NEVER include in images)
 .env
+.env.*
+*.pem
+*.key
+credentials.json
+
+# Version control
 .git
+.gitignore
+.gitattributes
+
+# IDE and editor files
+.idea
+.vscode
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Documentation (not needed in production)
+README.md
+CHANGELOG.md
+docs/
+*.md
+
+# Test files (not needed in production)
+__tests__
+*.test.ts
+*.test.js
+*.spec.ts
+*.spec.js
+coverage
+.nyc_output
+jest.config.*
+
+# CI/CD configuration (not needed in container)
+cloudbuild.yaml
+.github
+.gitlab-ci.yml
+.travis.yml
+Jenkinsfile
+*.dockerfile
+docker-compose*.yml
+
+# Logs
+logs
+*.log
+
+# TypeScript source maps (optional - remove if you need debugging)
+*.map
+
+# Temporary files
+tmp
+temp
+.cache
