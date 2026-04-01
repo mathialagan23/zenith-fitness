@@ -1,0 +1,39 @@
+{
+  "name": "ZENITH Fitness Tracker",
+  "short_name": "ZENITH",
+  "description": "Premium dark-themed fitness tracking app for diet, workouts, and progress",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0f",
+  "theme_color": "#0a0a0f",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    }
+  ],
+  "categories": ["fitness", "health", "lifestyle"],
+  "shortcuts": [
+    {
+      "name": "Log Meal",
+      "short_name": "Meal",
+      "description": "Quick log a meal",
+      "url": "/diet?action=log"
+    },
+    {
+      "name": "Log Workout",
+      "short_name": "Workout",
+      "description": "Quick log a workout",
+      "url": "/workout?action=log"
+    }
+  ]
+}
