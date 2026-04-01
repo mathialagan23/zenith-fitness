@@ -59,7 +59,7 @@ steps:
       - 'MONGO_URI=MONGO_URI:latest,JWT_SECRET=JWT_SECRET:latest,CLIENT_URL=CLIENT_URL:latest'
 
       - '--set-env-vars'
-      - 'NODE_ENV=production,PORT=8080'
+      - 'NODE_ENV=production
 
     waitFor:
       - 'push'
