@@ -14,16 +14,18 @@ import { globalRateLimiter } from "./middleware/rateLimit.middleware.js";
 import routes from "./routes/index.js";
 import { logger } from "./utils/logger.js";
 
+// ─── App ─────────────────────────────────────────────────────────────────────
+
 const app = express();
 
-// Connect to database
-connectDB();
+// ─── Security & Core Middleware ───────────────────────────────────────────────
 
-// Security & core middleware
-app.use(helmet({
-  contentSecurityPolicy: env.NODE_ENV === "production" ? undefined : false,
-  crossOriginResourcePolicy: { policy: "cross-origin" },
-}));
+app.use(
+  helmet({
+    contentSecurityPolicy: env.NODE_ENV === "production" ? undefined : false,
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
 app.disable("x-powered-by");
 app.use(cors(corsOptions));
 app.use(morgan(env.NODE_ENV === "development" ? "dev" : "combined"));
@@ -31,48 +33,116 @@ app.use(express.json({ limit: "10kb" }));
 app.use(express.urlencoded({ extended: true, limit: "10kb" }));
 app.use(cookieParser(env.COOKIE_SECRET));
 
-// NoSQL injection protection
+// ─── NoSQL Injection Protection ───────────────────────────────────────────────
+
 app.use(mongoSanitize());
 
-// Request timeout (30 seconds)
+// ─── Request Timeout ─────────────────────────────────────────────────────────
+
 app.use(timeout("30s"));
 
-// Global rate limiter
+// ─── Rate Limiting ────────────────────────────────────────────────────────────
+
 app.use(globalRateLimiter);
 
-// CSRF protection (cookie-based)
+// ─── CSRF Protection ─────────────────────────────────────────────────────────
+
 const csrfProtection = csurf({
   cookie: {
     httpOnly: true,
     secure: env.NODE_ENV === "production",
-    sameSite: "strict",
+    sameSite: "lax",
   },
 });
 
-// CSRF token route (must be before CSRF protection on other routes)
+// CSRF token endpoint (must come before protected routes)
 app.get("/api/csrf-token", csrfProtection, (req, res) => {
-  res.json({
-    success: true,
-    csrfToken: req.csrfToken(),
-  });
+  res.json({ success: true, csrfToken: req.csrfToken() });
 });
 
-// Apply CSRF protection to state-changing routes
+// Apply CSRF protection to all API state-changing routes
 app.use("/api", csrfProtection, routes);
 
-// Error handling
+// ─── Error Handling ───────────────────────────────────────────────────────────
+
 app.use(notFound);
 app.use(errorHandler);
 
-// Start server
-const PORT = parseInt(env.PORT);
-app.listen(PORT, () => {
-  logger.info("ZENITH Fitness API Server started", {
-    env: env.NODE_ENV,
-    server: `http://localhost:${PORT}`,
-    api: `http://localhost:${PORT}/api`,
-    health: `http://localhost:${PORT}/api/health`,
+// ─── Bootstrap ───────────────────────────────────────────────────────────────
+
+/**
+ * Cloud Run requires:
+ *  1. Binding to 0.0.0.0 (not localhost/127.0.0.1)
+ *  2. Listening on process.env.PORT (injected by Cloud Run at runtime)
+ *  3. Server must be ready BEFORE the container health-check deadline (~10s)
+ *
+ * Strategy: connect to MongoDB first, then bind the HTTP port.
+ * If DB connection fails, process.exit(1) in connectDB() prevents a silent crash.
+ */
+const bootstrap = async (): Promise<void> => {
+  // Cloud Run injects PORT at runtime; fall back to env schema default (5000) locally.
+  const PORT = Number(process.env.PORT) || Number(env.PORT) || 8080;
+  const HOST = "0.0.0.0"; // mandatory for Cloud Run – localhost won't accept external traffic
+
+  logger.info("Starting ZENITH Fitness API...", {
+    nodeEnv: env.NODE_ENV,
+    port: PORT,
+    host: HOST,
+    nodeVersion: process.version,
   });
+
+  // 1. Establish DB connection before accepting traffic
+  await connectDB();
+
+  // 2. Bind HTTP server only after DB is ready
+  const server = app.listen(PORT, HOST, () => {
+    logger.info("✅ ZENITH Fitness API is live", {
+      env: env.NODE_ENV,
+      server: `http://${HOST}:${PORT}`,
+      api: `http://${HOST}:${PORT}/api`,
+      health: `http://${HOST}:${PORT}/api/health`,
+    });
+  });
+
+  // ─── Graceful Shutdown ──────────────────────────────────────────────────────
+  // Cloud Run sends SIGTERM before killing the container; drain in-flight requests.
+
+  const shutdown = (signal: string) => {
+    logger.warn(`Received ${signal}. Shutting down gracefully...`);
+    server.close(() => {
+      logger.info("HTTP server closed. Exiting.");
+      process.exit(0);
+    });
+
+    // Force-exit after 10 s if graceful drain stalls (Cloud Run timeout is 10 s)
+    setTimeout(() => {
+      logger.error("Graceful shutdown timed out. Forcing exit.");
+      process.exit(1);
+    }, 10_000).unref();
+  };
+
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
+};
+
+// ─── Unhandled Rejection / Exception Guards ───────────────────────────────────
+// Prevent silent crashes that leave Cloud Run in a broken state.
+
+process.on("unhandledRejection", (reason) => {
+  logger.error("Unhandled promise rejection – forcing exit", { reason });
+  process.exit(1);
+});
+
+process.on("uncaughtException", (err) => {
+  logger.error("Uncaught exception – forcing exit", { error: err.message, stack: err.stack });
+  process.exit(1);
+});
+
+// ─── Start ────────────────────────────────────────────────────────────────────
+
+bootstrap().catch((err) => {
+  logger.error("Bootstrap failed – forcing exit", { error: err.message, stack: err.stack });
+  process.exit(1);
 });
 
 export default app;
