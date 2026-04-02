@@ -76,8 +76,9 @@ app.use(errorHandler);
  *  2. Listening on process.env.PORT (injected by Cloud Run at runtime)
  *  3. Server must be ready BEFORE the container health-check deadline (~10s)
  *
- * Strategy: connect to MongoDB first, then bind the HTTP port.
- * If DB connection fails, process.exit(1) in connectDB() prevents a silent crash.
+ * Strategy: bind the HTTP port immediately, then connect to MongoDB in the
+ * background so Cloud Run can mark the container ready even if the database
+ * takes longer to respond.
  */
 const bootstrap = async (): Promise<void> => {
   // Cloud Run injects PORT at runtime; fall back to env schema default (5000) locally.
@@ -91,16 +92,19 @@ const bootstrap = async (): Promise<void> => {
     nodeVersion: process.version,
   });
 
-  // 1. Establish DB connection before accepting traffic
-  await connectDB();
-
-  // 2. Bind HTTP server only after DB is ready
   const server = app.listen(PORT, HOST, () => {
     logger.info("✅ ZENITH Fitness API is live", {
       env: env.NODE_ENV,
       server: `http://${HOST}:${PORT}`,
       api: `http://${HOST}:${PORT}/api`,
       health: `http://${HOST}:${PORT}/api/health`,
+    });
+  });
+
+  // Connect to MongoDB without blocking startup.
+  void connectDB().catch((error) => {
+    logger.error("MongoDB initialization failed after HTTP server started", {
+      error,
     });
   });
 
