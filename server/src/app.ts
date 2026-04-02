@@ -55,6 +55,12 @@ const csrfProtection = csurf({
   },
 });
 
+// ─── Health Check (MUST be before CSRF protection for Cloud Run) ─────────────
+// Cloud Run health checks cannot provide CSRF tokens, so this must be unprotected.
+app.get("/api/health", (_req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
 // CSRF token endpoint (must come before protected routes)
 app.get("/api/csrf-token", csrfProtection, (req, res) => {
   res.json({ success: true, csrfToken: req.csrfToken() });

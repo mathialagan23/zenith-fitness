@@ -17,9 +17,4 @@ router.use("/workout", workoutRoutes);
 router.use("/progress", progressRoutes);
 router.use("/insights", insightsRoutes);
 
-// Health check
-router.get("/health", (_req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
-});
-
 export default router;
