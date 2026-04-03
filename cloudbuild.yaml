@@ -1,3 +1,7 @@
+# =============================================================================
+# Cloud Build Configuration for ZENITH Fitness API
+# Builds, pushes, and deploys to Cloud Run
+# =============================================================================
 
 steps:
   # Step 1: Build Docker image with commit SHA tag
@@ -8,7 +12,9 @@ steps:
       - 'asia-south1-docker.pkg.dev/zenith-fitness-492214/zenith-fitness/zenith-fitness-api:$COMMIT_SHA'
       - '-t'
       - 'asia-south1-docker.pkg.dev/zenith-fitness-492214/zenith-fitness/zenith-fitness-api:latest'
-      - '.'
+      - '-f'
+      - 'server/Dockerfile'
+      - 'server'
 
   # Step 2: Push image with commit SHA tag to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
