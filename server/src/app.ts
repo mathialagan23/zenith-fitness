@@ -46,12 +46,14 @@ app.use(timeout("30s"));
 app.use(globalRateLimiter);
 
 // ─── CSRF Protection ─────────────────────────────────────────────────────────
+// For cross-origin requests (frontend and backend on different domains),
+// we need sameSite: "none" with secure: true for cookies to work.
 
 const csrfProtection = csurf({
   cookie: {
     httpOnly: true,
     secure: env.NODE_ENV === "production",
-    sameSite: "lax",
+    sameSite: env.NODE_ENV === "production" ? "none" : "lax",
   },
 });
 

@@ -23,10 +23,12 @@ export const loginSchema = z.object({
 });
 
 // Cookie options
+// For cross-origin requests (frontend and backend on different domains),
+// we need sameSite: "none" with secure: true for cookies to work.
 const cookieOptions = {
 	httpOnly: true,
 	secure: env.NODE_ENV === "production",
-	sameSite: "strict" as const,
+	sameSite: (env.NODE_ENV === "production" ? "none" : "strict") as const,
 	maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
 };
 
@@ -136,7 +138,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 export const logout = (_req: Request, res: Response): void => {
   res.cookie("token", "", {
     httpOnly: true,
-    sameSite: "strict",
+    sameSite: env.NODE_ENV === "production" ? "none" : "strict",
     secure: env.NODE_ENV === "production",
     expires: new Date(0),
   });
