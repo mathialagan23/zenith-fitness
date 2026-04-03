@@ -94,6 +94,11 @@ export const logWorkoutSchema = z.object({
 // Day of week type for weekly schedule
 type DayOfWeek = "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
 
+// Helper: Escape special regex characters to prevent regex injection
+const escapeRegex = (str: string): string => {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+};
+
 // Helper: Get previous best for an exercise from workout history
 const findPreviousBest = async (
   userId: string,
@@ -103,10 +108,13 @@ const findPreviousBest = async (
   // Search last 90 days of workout history
   const startDate = subDays(new Date(), 90);
 
+  // Escape regex special characters to prevent injection
+  const escapedName = escapeRegex(exerciseName);
+
   const query: Record<string, unknown> = {
     userId,
     date: { $gte: startDate },
-    "exercises.name": { $regex: new RegExp(`^${exerciseName}$`, "i") },
+    "exercises.name": { $regex: new RegExp(`^${escapedName}$`, "i") },
   };
 
   // Exclude current date if provided
