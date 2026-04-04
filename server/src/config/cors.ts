@@ -6,4 +6,5 @@ export const corsOptions: cors.CorsOptions = {
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token"],
+  exposedHeaders: ["X-CSRF-Token"],
 };

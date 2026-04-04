@@ -51,9 +51,12 @@ app.use(globalRateLimiter);
 
 const csrfProtection = csurf({
   cookie: {
+    key: "_csrf",
     httpOnly: true,
     secure: env.NODE_ENV === "production",
     sameSite: env.NODE_ENV === "production" ? "none" : "lax",
+    signed: true,
+    path: "/",
   },
 });
 
